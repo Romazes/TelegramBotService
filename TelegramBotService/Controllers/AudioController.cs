@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types;
 using TelegramBotService.Services.Interface;
@@ -20,18 +16,18 @@ namespace TelegramBotService.Controllers
             _audioService = audioService;
         }
 
-        // GET api/values
+        // GET api/audio/update
         [HttpGet]
         public string Get()
         {
             return "Method GET unuvalable";
         }
 
-        // POST api/values
+        // POST api/audio/update
         [HttpPost]
-        public async Task<OkResult> Post([FromBody] Update update)
+        public async Task<IActionResult> Post([FromBody] Update update)
         {
-            if (update == null) return Ok();
+            if (update == null) return BadRequest();
             await _audioService.GetAudio(update);
             return Ok();
         }

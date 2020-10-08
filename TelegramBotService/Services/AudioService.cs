@@ -1,35 +1,37 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.InputFiles;
+using TelegramBotService.Extensions;
 using TelegramBotService.Services.Interface;
-using TelegramBotService.Utilities;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
+using static TelegramBotService.Utilities.Constants;
 
 namespace TelegramBotService.Services
 {
     public class AudioService : IAudioService
     {
-        public TelegramBotClient TelegramClient { get; }
+        private readonly Audiobot _options;
         private readonly ILogger<AudioService> _logger;
         private readonly YoutubeClient _youtubeClient;
+        public TelegramBotClient TelegramClient { get; }
 
         private long ChatId { get; set; }
 
-        public AudioService(YoutubeClient youtubeClient,
-            ILogger<AudioService> logger
-            /*IOptions<AppSettings> config*/)
+        public AudioService(ILogger<AudioService> logger, YoutubeClient youtubeClient, 
+            IOptions<Audiobot> options)
         {
-            _youtubeClient = youtubeClient;
             _logger = logger;
-            TelegramClient = new TelegramBotClient("1246596370:AAFNzzM_HSfZqo999Qbu2wITcY0ycg07dxI");
+            _options = options.Value;
+            _youtubeClient = youtubeClient;
+            TelegramClient = new TelegramBotClient(_options.BotToken);
         }
 
-        public async Task GetAudio(Update update)
+        public async Task<bool> GetAudio(Update update)
         {
             ChatId = update.Message.Chat.Id;
             var messageText = update.Message.Text;
@@ -38,10 +40,10 @@ namespace TelegramBotService.Services
 
             _logger.LogInformation($"Received a text message in chat {ChatId} with message {messageText}");
 
-            if (messageText == null || !messageText.Contains("https") | messageText == "/start")
+            if (!messageText.IsValidUrl() | messageText == "/start")
             {
                 await SendTextMessage(ValidationMessages.StartCommandReplyMessage);
-                return;
+                return false;
             }
 
             try
@@ -52,7 +54,7 @@ namespace TelegramBotService.Services
             {
                 _logger.LogInformation($"Error for message {messageText} with GetVideoMediaDataAsync: {ex}");
                 await SendTextMessage(ValidationMessages.InvalidLinkMessage);
-                return;
+                return false;
             }
 
             try
@@ -63,25 +65,23 @@ namespace TelegramBotService.Services
             {
                 _logger.LogInformation($"Error for message {messageText} with GetVideoMediaStreamInfosAsync: {ex}");
                 await SendTextMessage(ValidationMessages.SomeErrorMessage);
-                return;
+                return false;
             }
 
-            IAudioStreamInfo streamInfo = (IAudioStreamInfo)streamInfoSet
-                .GetAudioOnly()
-                .WithHighestBitrate();
-
-            if (streamInfo == null)
-            {
-                var failMessage = streamInfoSet.GetAudioOnly().Any() ? ValidationMessages.FileSizeExceedLimitMessage : ValidationMessages.Mp4DoesNotExistsMessage;
-                await SendTextMessage(failMessage);
-                _logger.LogInformation($"Stream info for {messageText} was empty and error for user is {failMessage}");
-                return;
-            }
+            var streamInfo = await GetAudioStreamInfo(streamInfoSet, messageText);
 
             await SendAudio(streamInfo, videoId);
+
+            return true;
         }
 
-        private async Task SendAudio(IAudioStreamInfo streamInfo, YoutubeExplode.Videos.Video video)
+        /// <summary>
+        /// Send Audio to last destionation (user)
+        /// </summary>
+        /// <param name="streamInfo">audio file</param>
+        /// <param name="video">need for get some information about song.</param>
+        /// <returns></returns>
+        public async Task SendAudio(IAudioStreamInfo streamInfo, YoutubeExplode.Videos.Video video)
         {
             using (var audioStream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo))
             {
@@ -95,7 +95,34 @@ namespace TelegramBotService.Services
             }
         }
 
-        private async Task SendTextMessage(string message) => await TelegramClient.SendTextMessageAsync(ChatId, message);
+        /// <summary>
+        /// Get Audio Stream 
+        /// </summary>
+        /// <param name="streamManifest">manifest bases on video bitray/quality</param>
+        /// <param name="messageText">text which user input, need for exception</param>
+        /// <returns></returns>
+        private async Task<IAudioStreamInfo> GetAudioStreamInfo(StreamManifest streamManifest, string messageText)
+        {
+            IAudioStreamInfo streamInfo = (IAudioStreamInfo)streamManifest
+                .GetAudioOnly()
+                .WithHighestBitrate();
+
+            if (streamInfo == null)
+            {
+                var failMessage = streamManifest.GetAudioOnly().Any() ? ValidationMessages.FileSizeExceedLimitMessage : ValidationMessages.Mp4DoesNotExistsMessage;
+                await SendTextMessage(failMessage);
+                _logger.LogInformation($"Stream info for {messageText} was empty and error for user is {failMessage}");
+            }
+
+            return streamInfo;
+        }
+
+        /// <summary>
+        /// Send message to client about different exception or valid input etc.
+        /// </summary>
+        /// <param name="messageText">text which user input, need for exception</param>
+        /// <returns></returns>
+        private async Task SendTextMessage(string messageText) => await TelegramClient.SendTextMessageAsync(ChatId, messageText);
 
     }
 }

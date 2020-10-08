@@ -14,18 +14,18 @@ namespace TelegramBotService
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            StaticConfig = configuration;
         }
 
+        public static IConfiguration StaticConfig { get; private set; }
         public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<IAudioService, AudioService>();
-
             services.AddScoped<YoutubeClient>();
-
-            services.AddTransient<BotService>()
-                .Configure<Audiobot>(Configuration.GetSection("BotConfiguration"));
+            services.AddTransient<BotService>();
+            services.Configure<Audiobot>(Configuration.GetSection("BotConfiguration"));
 
             services.AddControllers();
         }
