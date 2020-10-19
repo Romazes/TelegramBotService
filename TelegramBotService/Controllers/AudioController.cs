@@ -25,7 +25,7 @@ namespace TelegramBotService.Controllers
 
         // POST api/audio/update
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Update update)
+        public async Task<IActionResult> Post(Update update)
         {
             if (update == null) return BadRequest();
             await _audioService.GetAudio(update);

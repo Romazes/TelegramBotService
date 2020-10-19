@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Telegram.Bot;
 using TelegramBotService.Services;
 using TelegramBotService.Services.Interface;
 using YoutubeExplode;
@@ -14,20 +15,20 @@ namespace TelegramBotService
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-            StaticConfig = configuration;
         }
 
-        public static IConfiguration StaticConfig { get; private set; }
         public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<IAudioService, AudioService>();
             services.AddScoped<YoutubeClient>();
-            services.AddTransient<BotService>();
-            services.Configure<Audiobot>(Configuration.GetSection("BotConfiguration"));
+            services.Configure<AudioBotSettings>(Configuration.GetSection("BotConfiguration"));
+            services.AddSingleton(sp => new TelegramBotClient(Configuration["BotConfiguration:BotToken"]));
+            services.AddHostedService<TelegramBotInitializationHostedService>();
 
-            services.AddControllers();
+            services.AddControllers()
+                    .AddNewtonsoftJson();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -42,12 +43,11 @@ namespace TelegramBotService
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapDefaultControllerRoute();
                 endpoints.MapControllers();
             });
 
             //Bot Configurations
-            BotService.GetBotClientAsync().Wait();
+            //app.ApplicationServices.GetService<IBotService>();
         }
     }
 }

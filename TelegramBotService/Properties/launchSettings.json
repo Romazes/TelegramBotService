@@ -19,7 +19,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:8443;http://localhost:8442"
+      "applicationUrl": "https://localhost:443;http://localhost:442"
     },
     "Azure Dev Spaces": {
       "commandName": "AzureDevSpaces",

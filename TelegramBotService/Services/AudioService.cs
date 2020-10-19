@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,20 +14,18 @@ namespace TelegramBotService.Services
 {
     public class AudioService : IAudioService
     {
-        private readonly Audiobot _options;
         private readonly ILogger<AudioService> _logger;
         private readonly YoutubeClient _youtubeClient;
-        public TelegramBotClient TelegramClient { get; }
+        private readonly TelegramBotClient _telegramBotClient;
 
         private long ChatId { get; set; }
 
-        public AudioService(ILogger<AudioService> logger, YoutubeClient youtubeClient, 
-            IOptions<Audiobot> options)
+        public AudioService(ILogger<AudioService> logger, YoutubeClient youtubeClient,
+            TelegramBotClient telegramBotClient)
         {
             _logger = logger;
-            _options = options.Value;
             _youtubeClient = youtubeClient;
-            TelegramClient = new TelegramBotClient(_options.BotToken);
+            _telegramBotClient = telegramBotClient;
         }
 
         public async Task<bool> GetAudio(Update update)
@@ -85,7 +82,7 @@ namespace TelegramBotService.Services
         {
             using (var audioStream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo))
             {
-                await TelegramClient.SendAudioAsync(
+                await _telegramBotClient.SendAudioAsync(
                     chatId: ChatId,
                     audio: audioStream,
                     caption: video.Url,
@@ -122,7 +119,7 @@ namespace TelegramBotService.Services
         /// </summary>
         /// <param name="messageText">text which user input, need for exception</param>
         /// <returns></returns>
-        private async Task SendTextMessage(string messageText) => await TelegramClient.SendTextMessageAsync(ChatId, messageText);
+        private async Task SendTextMessage(string messageText) => await _telegramBotClient.SendTextMessageAsync(ChatId, messageText);
 
     }
 }

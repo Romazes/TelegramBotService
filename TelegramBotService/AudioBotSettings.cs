@@ -1,9 +1,9 @@
 ﻿namespace TelegramBotService
 {
-    public class Audiobot
-    { 
+    public class AudioBotSettings
+    {
         public string BotToken { get; set; }
         public string Username { get; set; }
-        public static string Url { get; set; }
+        public string Url { get; set; } 
     }
 }
