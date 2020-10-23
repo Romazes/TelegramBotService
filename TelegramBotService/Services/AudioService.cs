@@ -67,7 +67,10 @@ namespace TelegramBotService.Services
 
             var streamInfo = await GetAudioStreamInfo(streamInfoSet, messageText);
 
-            await SendAudio(streamInfo, videoId);
+            if (streamInfo != null)
+            {
+                await SendAudio(streamInfo, videoId);
+            }
 
             return true;
         }
@@ -104,11 +107,12 @@ namespace TelegramBotService.Services
                 .GetAudioOnly()
                 .WithHighestBitrate();
 
-            if (streamInfo == null)
+            if (streamInfo == null || streamInfo.Size.TotalMegaBytes > 50)
             {
                 var failMessage = streamManifest.GetAudioOnly().Any() ? ValidationMessages.FileSizeExceedLimitMessage : ValidationMessages.Mp4DoesNotExistsMessage;
                 await SendTextMessage(failMessage);
                 _logger.LogInformation($"Stream info for {messageText} was empty and error for user is {failMessage}");
+                return null;
             }
 
             return streamInfo;
